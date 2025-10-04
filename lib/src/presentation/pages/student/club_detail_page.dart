@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
-import 'club_chat_page.dart'; // We'll create this next
-import 'propose_event_page.dart'; // We'll create this too
+import 'club_chat_page.dart';
+import 'propose_event_page.dart';
+import '../volunteer/volunteer_management_page.dart';
 
 class ClubDetailPage extends StatefulWidget {
   final Map<String, dynamic> club;
@@ -31,6 +32,8 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
       'venue': 'CS Lab 101',
       'status': 'approved',
       'registered': true,
+      'needsVolunteers': true,
+      'volunteerRoles': ['Registration', 'Technical Support'],
     },
     {
       'id': '2',
@@ -40,6 +43,8 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
       'venue': 'Main Auditorium',
       'status': 'approved',
       'registered': false,
+      'needsVolunteers': true,
+      'volunteerRoles': ['Judging Assistant', 'Participant Support'],
     },
     {
       'id': '3',
@@ -49,6 +54,7 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
       'venue': 'Lecture Hall B',
       'status': 'pending',
       'registered': false,
+      'needsVolunteers': false,
     },
   ];
 
@@ -104,6 +110,15 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
               );
             },
           ),
+          // Volunteer Management (only for event proposers)
+          if (widget.canProposeEvents)
+            IconButton(
+              icon: const Icon(Icons.volunteer_activism_rounded),
+              onPressed: () {
+                // Show events that need volunteer management
+                _showVolunteerManagementOptions();
+              },
+            ),
           // Propose Event Button (only if user has permission)
           if (widget.canProposeEvents)
             IconButton(
@@ -202,7 +217,19 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
       itemCount: _upcomingEvents.length,
       itemBuilder: (context, index) {
         final event = _upcomingEvents[index];
-        return _EventCard(event: event);
+        return _EventCard(
+          event: event,
+          onManageVolunteers: widget.canProposeEvents && event['needsVolunteers']
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VolunteerManagementPage(event: event),
+                    ),
+                  );
+                }
+              : null,
+        );
       },
     );
   }
@@ -214,6 +241,115 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
       itemBuilder: (context, index) {
         final proposal = _myProposals[index];
         return _ProposalCard(proposal: proposal);
+      },
+    );
+  }
+
+  void _showVolunteerManagementOptions() {
+    final eventsNeedingVolunteers = _upcomingEvents.where((event) => event['needsVolunteers'] == true).toList();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkGray,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.mediumGray,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Manage Volunteers',
+                style: AppTextStyles.headlineSmall,
+              ),
+              const SizedBox(height: 16),
+              
+              if (eventsNeedingVolunteers.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.people_outline_rounded,
+                        size: 48,
+                        color: AppColors.mediumGray,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No events need volunteers',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.mediumGray,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...eventsNeedingVolunteers.map((event) {
+                  return ListTile(
+                    leading: Icon(
+                      Icons.event_rounded,
+                      color: AppColors.accentYellow,
+                    ),
+                    title: Text(
+                      event['title'],
+                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.pureWhite),
+                    ),
+                    subtitle: Text(
+                      '${event['date']} • ${event['venue']}',
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.mediumGray),
+                    ),
+                    trailing: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: AppColors.mediumGray,
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VolunteerManagementPage(event: event),
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accentYellow,
+                    side: BorderSide(color: AppColors.accentYellow),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: AppTextStyles.buttonMedium,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
       },
     );
   }
@@ -262,8 +398,9 @@ class _DetailTab extends StatelessWidget {
 
 class _EventCard extends StatelessWidget {
   final Map<String, dynamic> event;
+  final VoidCallback? onManageVolunteers;
 
-  const _EventCard({required this.event});
+  const _EventCard({required this.event, this.onManageVolunteers});
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +432,38 @@ class _EventCard extends StatelessWidget {
           _EventDetailRow(icon: Icons.calendar_today_rounded, text: event['date']),
           _EventDetailRow(icon: Icons.access_time_rounded, text: event['time']),
           _EventDetailRow(icon: Icons.location_on_rounded, text: event['venue']),
+          
+          // Volunteer Needs
+          if (event['needsVolunteers'] == true) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primaryBlack,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.accentYellow),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.volunteer_activism_rounded,
+                    size: 16,
+                    color: AppColors.accentYellow,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Volunteers Needed: ${event['volunteerRoles']?.join(', ') ?? 'Various roles'}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.accentYellow,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           const SizedBox(height: 12),
           Row(
             children: [
@@ -313,6 +482,17 @@ class _EventCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onManageVolunteers != null) ...[
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: onManageVolunteers,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accentYellow,
+                    side: BorderSide(color: AppColors.accentYellow),
+                  ),
+                  child: const Icon(Icons.people_alt_rounded, size: 20),
+                ),
+              ],
             ],
           ),
         ],

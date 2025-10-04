@@ -4,6 +4,7 @@ import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../widgets/event/event_calendar.dart';
 import '../../widgets/event/event_card.dart';
+import '../../widgets/event/volunteer_card.dart';
 import '../../providers/auth_provider.dart';
 import 'events_page.dart';
 import 'club_page.dart';
@@ -56,7 +57,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       backgroundColor: AppColors.primaryBlack,
       body: IndexedStack(
         index: _currentIndex,
-        children: _buildPages(),
+        children: _buildPages(context),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -103,9 +104,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
-  List<Widget> _buildPages() {
+  List<Widget> _buildPages(BuildContext context) {
     return [
-      _HomeContent(recommendedEvents: _recommendedEvents),
+      _HomeContent(
+        recommendedEvents: _recommendedEvents,
+        context: context,
+      ),
       const EventsPage(),
       const ClubPage(),
       const ProfilePage(),
@@ -122,8 +126,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
 // Home Content - Your original student dashboard design
 class _HomeContent extends StatelessWidget {
   final List<Map<String, dynamic>> recommendedEvents;
+  final BuildContext context;
 
-  const _HomeContent({required this.recommendedEvents});
+  const _HomeContent({
+    required this.recommendedEvents,
+    required this.context,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +217,7 @@ class _HomeContent extends StatelessWidget {
                   // Calendar Section
                   const EventCalendar(),
                   const SizedBox(height: 24),
+                  
                   // Recommended Section Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -218,7 +227,9 @@ class _HomeContent extends StatelessWidget {
                         style: AppTextStyles.headlineSmall,
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // TODO: Navigate to all events
+                        },
                         child: Text(
                           'See All',
                           style: AppTextStyles.link,
@@ -229,6 +240,30 @@ class _HomeContent extends StatelessWidget {
                   const SizedBox(height: 16),
                   // Recommended Events
                   _buildRecommendedEvents(),
+                  const SizedBox(height: 24),
+                  
+                  // Volunteers Needed Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Volunteers Needed',
+                        style: AppTextStyles.headlineSmall,
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // TODO: Navigate to all volunteer opportunities
+                        },
+                        child: Text(
+                          'See All',
+                          style: AppTextStyles.link,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Volunteers Needed Cards
+                  _buildVolunteerOpportunities(context),
                   const SizedBox(height: 80), // Space for bottom navigation
                 ],
               ),
@@ -252,6 +287,62 @@ class _HomeContent extends StatelessWidget {
           imageUrl: event['imageUrl'],
           onTap: () {
             // TODO: Navigate to event details
+          },
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildVolunteerOpportunities(BuildContext context) {
+    // Mock volunteer opportunities
+    final List<Map<String, dynamic>> volunteerOpportunities = [
+      {
+        'eventTitle': 'Tech Symposium 2024',
+        'clubName': 'Computer Society',
+        'eventDate': 'Oct 15',
+        'eventTime': '2:00 PM',
+        'venue': 'Main Auditorium',
+        'neededRoles': ['Registration Desk', 'Technical Support', 'Stage Manager'],
+        'volunteersNeeded': 8,
+        'currentVolunteers': 3,
+        'hasApplied': false,
+      },
+      {
+        'eventTitle': 'Cultural Fest 2024',
+        'clubName': 'Cultural Committee',
+        'eventDate': 'Oct 25',
+        'eventTime': '4:00 PM',
+        'venue': 'Arts Block',
+        'neededRoles': ['Crowd Management', 'Photography', 'Logistics'],
+        'volunteersNeeded': 12,
+        'currentVolunteers': 8,
+        'hasApplied': true,
+      },
+    ];
+
+    return Column(
+      children: volunteerOpportunities.map((opportunity) {
+        return VolunteerCard(
+          eventTitle: opportunity['eventTitle'],
+          clubName: opportunity['clubName'],
+          eventDate: opportunity['eventDate'],
+          eventTime: opportunity['eventTime'],
+          venue: opportunity['venue'],
+          neededRoles: opportunity['neededRoles'],
+          volunteersNeeded: opportunity['volunteersNeeded'],
+          currentVolunteers: opportunity['currentVolunteers'],
+          hasApplied: opportunity['hasApplied'],
+          onApply: () {
+            // TODO: Apply for volunteer position
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppColors.accentYellow,
+                content: Text(
+                  'Applied for ${opportunity['eventTitle']} volunteer position!',
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.darkGray),
+                ),
+              ),
+            );
           },
         );
       }).toList(),

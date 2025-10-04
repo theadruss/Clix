@@ -5,6 +5,7 @@ import '../../widgets/common/custom_text_field.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../presentation/providers/auth_provider.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -244,7 +245,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        // TODO: Navigate to register page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterPage(),
+                          ),
+                        );
                       },
                       child: Text(
                         'Sign Up',
@@ -301,13 +307,4 @@ class _DemoAccountChip extends StatelessWidget {
       ),
     );
   }
-}
-
-// Add this enum at the bottom of the file
-enum UserRole {
-  student,
-  clubMember,
-  clubCoordinator,
-  admin,
-  externalOrganizer,
 }
