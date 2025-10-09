@@ -18,11 +18,9 @@ class AppTheme {
         primary: AppColors.accentYellow,
         secondary: AppColors.accentYellow,
         surface: AppColors.darkGray,
-        background: AppColors.primaryBlack,
         onPrimary: AppColors.darkGray,
         onSecondary: AppColors.darkGray,
         onSurface: AppColors.pureWhite,
-        onBackground: AppColors.pureWhite,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

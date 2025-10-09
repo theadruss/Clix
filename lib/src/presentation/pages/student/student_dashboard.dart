@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/utils/mock_data_service.dart';
 import '../../widgets/event/event_calendar.dart';
 import '../../widgets/event/event_card.dart';
 import '../../widgets/event/volunteer_card.dart';
@@ -19,37 +20,6 @@ class StudentDashboard extends StatefulWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   int _currentIndex = 0;
-
-  // Mock data for events
-  final List<Map<String, dynamic>> _recommendedEvents = [
-    {
-      'title': 'Tech Symposium 2024',
-      'club': 'Computer Society',
-      'date': 'Oct 15',
-      'time': '2:00 PM',
-      'venue': 'Main Auditorium',
-      'interestedCount': 124,
-      'imageUrl': 'https://picsum.photos/400/200?random=1',
-    },
-    {
-      'title': 'Cultural Fest Auditions',
-      'club': 'Cultural Committee',
-      'date': 'Oct 18',
-      'time': '4:00 PM',
-      'venue': 'Arts Block',
-      'interestedCount': 89,
-      'imageUrl': 'https://picsum.photos/400/200?random=2',
-    },
-    {
-      'title': 'Startup Pitch Competition',
-      'club': 'Entrepreneurship Cell',
-      'date': 'Oct 22',
-      'time': '10:00 AM',
-      'venue': 'Business School',
-      'interestedCount': 67,
-      'imageUrl': 'https://picsum.photos/400/200?random=3',
-    },
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -106,10 +76,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   List<Widget> _buildPages(BuildContext context) {
     return [
-      _HomeContent(
-        recommendedEvents: _recommendedEvents,
-        context: context,
-      ),
+      _HomeContent(context: context),
       const EventsPage(),
       const ClubPage(),
       const ProfilePage(),
@@ -123,21 +90,124 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 }
 
-// Home Content - Your original student dashboard design
-class _HomeContent extends StatelessWidget {
-  final List<Map<String, dynamic>> recommendedEvents;
+class _HomeContent extends StatefulWidget {
   final BuildContext context;
 
-  const _HomeContent({
-    required this.recommendedEvents,
-    required this.context,
-  });
+  const _HomeContent({required this.context});
+
+  @override
+  State<_HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<_HomeContent> {
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _filteredEvents = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredEvents = MockDataService.getEventsForUser().take(3).toList();
+    _searchController.addListener(_filterEvents);
+  }
+
+  void _filterEvents() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredEvents = MockDataService.getEventsForUser().take(3).toList();
+      } else {
+        _filteredEvents = MockDataService.searchEvents(query).take(3).toList();
+      }
+    });
+  }
+
+  void _showEventDetails(Map<String, dynamic> event) {
+    showModalBottomSheet(
+      context: widget.context,
+      backgroundColor: AppColors.darkGray,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.mediumGray,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(event['title'], style: AppTextStyles.headlineMedium),
+              const SizedBox(height: 8),
+              Text('by ${event['club']}', 
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.accentYellow)),
+              const SizedBox(height: 16),
+              _EventDetailRow(icon: Icons.calendar_today_rounded, text: event['date']),
+              _EventDetailRow(icon: Icons.access_time_rounded, text: event['time']),
+              _EventDetailRow(icon: Icons.location_on_rounded, text: event['venue']),
+              const SizedBox(height: 16),
+              Text(
+                event['description'],
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          if (event['isRegistered'] == true) {
+                            MockDataService.unregisterFromEvent(event['id']);
+                          } else {
+                            MockDataService.registerForEvent(event['id']);
+                          }
+                        });
+                        ScaffoldMessenger.of(widget.context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.accentYellow,
+                            content: Text(
+                              event['isRegistered'] ? 
+                              'Unregistered from ${event['title']}' : 
+                              'Registered for ${event['title']}!',
+                              style: TextStyle(color: AppColors.darkGray),
+                            ),
+                          ),
+                        );
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: event['isRegistered'] == true ? 
+                            AppColors.mediumGray : AppColors.accentYellow,
+                        foregroundColor: event['isRegistered'] == true ? 
+                            AppColors.pureWhite : AppColors.darkGray,
+                      ),
+                      child: Text(event['isRegistered'] == true ? 'Registered' : 'Register Now'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.user!;
-    final TextEditingController searchController = TextEditingController();
 
     return SafeArea(
       child: Column(
@@ -191,7 +261,7 @@ class _HomeContent extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: TextField(
-                    controller: searchController,
+                    controller: _searchController,
                     style: AppTextStyles.bodyMedium.copyWith(color: AppColors.pureWhite),
                     decoration: InputDecoration(
                       hintText: 'Search for events...',
@@ -228,7 +298,10 @@ class _HomeContent extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () {
-                          // TODO: Navigate to all events
+                          Navigator.push(
+                            widget.context, 
+                            MaterialPageRoute(builder: (context) => const EventsPage())
+                          );
                         },
                         child: Text(
                           'See All',
@@ -263,7 +336,7 @@ class _HomeContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   // Volunteers Needed Cards
-                  _buildVolunteerOpportunities(context),
+                  _buildVolunteerOpportunities(widget.context),
                   const SizedBox(height: 80), // Space for bottom navigation
                 ],
               ),
@@ -274,10 +347,14 @@ class _HomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildRecommendedEvents() {
-    return Column(
-      children: recommendedEvents.map((event) {
-        return EventCard(
+  // In _HomeContent class - update the _buildRecommendedEvents method:
+
+Widget _buildRecommendedEvents() {
+  return Column(
+    children: _filteredEvents.map((event) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16), // Added margin to prevent overflow
+        child: EventCard(
           title: event['title'],
           club: event['club'],
           date: event['date'],
@@ -286,43 +363,36 @@ class _HomeContent extends StatelessWidget {
           interestedCount: event['interestedCount'],
           imageUrl: event['imageUrl'],
           onTap: () {
-            // TODO: Navigate to event details
+            _showEventDetails(event);
           },
-        );
-      }).toList(),
-    );
-  }
+        ),
+      );
+    }).toList(),
+  );
+}
 
-  Widget _buildVolunteerOpportunities(BuildContext context) {
-    // Mock volunteer opportunities
-    final List<Map<String, dynamic>> volunteerOpportunities = [
-      {
-        'eventTitle': 'Tech Symposium 2024',
-        'clubName': 'Computer Society',
-        'eventDate': 'Oct 15',
-        'eventTime': '2:00 PM',
-        'venue': 'Main Auditorium',
-        'neededRoles': ['Registration Desk', 'Technical Support', 'Stage Manager'],
-        'volunteersNeeded': 8,
-        'currentVolunteers': 3,
-        'hasApplied': false,
-      },
-      {
-        'eventTitle': 'Cultural Fest 2024',
-        'clubName': 'Cultural Committee',
-        'eventDate': 'Oct 25',
-        'eventTime': '4:00 PM',
-        'venue': 'Arts Block',
-        'neededRoles': ['Crowd Management', 'Photography', 'Logistics'],
-        'volunteersNeeded': 12,
-        'currentVolunteers': 8,
-        'hasApplied': true,
-      },
-    ];
+// Also update the _buildVolunteerOpportunities method:
 
-    return Column(
-      children: volunteerOpportunities.map((opportunity) {
-        return VolunteerCard(
+Widget _buildVolunteerOpportunities(BuildContext context) {
+  final List<Map<String, dynamic>> volunteerOpportunities = [
+    {
+      'eventTitle': 'Tech Symposium 2024',
+      'clubName': 'Computer Society',
+      'eventDate': 'Oct 15',
+      'eventTime': '2:00 PM',
+      'venue': 'Main Auditorium',
+      'neededRoles': ['Registration Desk', 'Technical Support', 'Stage Manager'],
+      'volunteersNeeded': 8,
+      'currentVolunteers': 3,
+      'hasApplied': false,
+    },
+  ];
+
+  return Column(
+    children: volunteerOpportunities.map((opportunity) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16), // Added margin
+        child: VolunteerCard(
           eventTitle: opportunity['eventTitle'],
           clubName: opportunity['clubName'],
           eventDate: opportunity['eventDate'],
@@ -333,7 +403,6 @@ class _HomeContent extends StatelessWidget {
           currentVolunteers: opportunity['currentVolunteers'],
           hasApplied: opportunity['hasApplied'],
           onApply: () {
-            // TODO: Apply for volunteer position
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 backgroundColor: AppColors.accentYellow,
@@ -344,8 +413,38 @@ class _HomeContent extends StatelessWidget {
               ),
             );
           },
-        );
-      }).toList(),
+        ),
+      );
+    }).toList(),
+  );
+}
+}
+
+class _EventDetailRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _EventDetailRow({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.mediumGray),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.mediumGray,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

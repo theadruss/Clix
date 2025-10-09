@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/utils/mock_data_service.dart';
 import '../../providers/auth_provider.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -12,6 +13,18 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  int _calculateEventsAttended() {
+    return MockDataService.getEventsForUser().where((event) => event['isRegistered'] == true).length;
+  }
+
+  int _calculateClubsJoined() {
+    return MockDataService.getClubsForUser().where((club) => club['isMember'] == true).length;
+  }
+
+  int _calculateRegisteredEvents() {
+    return MockDataService.getEventsForUser().where((event) => event['isRegistered'] == true).length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -88,9 +101,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _StatItem(count: '12', label: 'Events\nAttended'),
-                    _StatItem(count: '3', label: 'Clubs\nJoined'),
-                    _StatItem(count: '8', label: 'Registered\nEvents'),
+                    _StatItem(count: _calculateEventsAttended().toString(), label: 'Events\nAttended'),
+                    _StatItem(count: _calculateClubsJoined().toString(), label: 'Clubs\nJoined'),
+                    _StatItem(count: _calculateRegisteredEvents().toString(), label: 'Registered\nEvents'),
                   ],
                 ),
               ),
@@ -101,32 +114,78 @@ class _ProfilePageState extends State<ProfilePage> {
                   _ProfileMenuItem(
                     icon: Icons.edit_rounded,
                     title: 'Edit Profile',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.accentYellow,
+                          content: Text(
+                            'Edit Profile feature coming soon!',
+                            style: TextStyle(color: AppColors.darkGray),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.event_rounded,
                     title: 'My Events',
-                    onTap: () {},
+                    onTap: () {
+                      final myEvents = MockDataService.getEventsForUser().where((event) => event['isRegistered'] == true).toList();
+                      _showMyEvents(myEvents);
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.group_rounded,
                     title: 'My Clubs',
-                    onTap: () {},
+                    onTap: () {
+                      final myClubs = MockDataService.getClubsForUser().where((club) => club['isMember'] == true).toList();
+                      _showMyClubs(myClubs);
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.volunteer_activism_rounded,
                     title: 'Volunteering',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.accentYellow,
+                          content: Text(
+                            'Volunteering feature coming soon!',
+                            style: TextStyle(color: AppColors.darkGray),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.settings_rounded,
                     title: 'Settings',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.accentYellow,
+                          content: Text(
+                            'Settings feature coming soon!',
+                            style: TextStyle(color: AppColors.darkGray),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.help_rounded,
                     title: 'Help & Support',
-                    onTap: () {},
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.accentYellow,
+                          content: Text(
+                            'Help & Support feature coming soon!',
+                            style: TextStyle(color: AppColors.darkGray),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   _ProfileMenuItem(
                     icon: Icons.logout_rounded,
@@ -140,6 +199,162 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showMyEvents(List<Map<String, dynamic>> events) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkGray,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.mediumGray,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'My Registered Events',
+                style: AppTextStyles.headlineMedium,
+              ),
+              const SizedBox(height: 16),
+              if (events.isEmpty)
+                Column(
+                  children: [
+                    Icon(
+                      Icons.event_busy_rounded,
+                      size: 64,
+                      color: AppColors.mediumGray,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No events registered yet',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.mediumGray,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                ...events.map((event) => ListTile(
+                  leading: Icon(Icons.event_rounded, color: AppColors.accentYellow),
+                  title: Text(event['title'], style: AppTextStyles.bodyMedium),
+                  subtitle: Text('${event['date']} • ${event['club']}', 
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.mediumGray)),
+                )).toList(),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accentYellow,
+                    side: BorderSide(color: AppColors.accentYellow),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMyClubs(List<Map<String, dynamic>> clubs) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkGray,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.mediumGray,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'My Clubs',
+                style: AppTextStyles.headlineMedium,
+              ),
+              const SizedBox(height: 16),
+              if (clubs.isEmpty)
+                Column(
+                  children: [
+                    Icon(
+                      Icons.group_off_rounded,
+                      size: 64,
+                      color: AppColors.mediumGray,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Not a member of any clubs yet',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.mediumGray,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                ...clubs.map((club) => ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: NetworkImage(club['imageUrl']),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  title: Text(club['name'], style: AppTextStyles.bodyMedium),
+                  subtitle: Text('${club['memberCount']} members', 
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.mediumGray)),
+                )).toList(),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accentYellow,
+                    side: BorderSide(color: AppColors.accentYellow),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

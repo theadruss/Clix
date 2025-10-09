@@ -21,8 +21,17 @@ class CampusConnectApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         home: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
+            // DEBUG: Print authentication state
+            print('=== AUTH STATE ===');
+            print('IsLoggedIn: ${authProvider.isLoggedIn}');
+            print('User: ${authProvider.user}');
+            print('User Role: ${authProvider.user?.role}');
+            print('==================');
+            
             if (authProvider.isLoggedIn) {
-              return _getDashboardForRole(authProvider.user!.role);
+              final role = authProvider.user!.role;
+              print('Navigating to dashboard for role: $role');
+              return _getDashboardForRole(role);
             } else {
               return const LoginPage();
             }
@@ -33,14 +42,19 @@ class CampusConnectApp extends StatelessWidget {
   }
 
   Widget _getDashboardForRole(String role) {
+    print('Getting dashboard for role: $role');
+    
     switch (role) {
       case 'admin':
         return const AdminDashboard();
       case 'student':
         return const StudentDashboard();
-      case 'club_coordinator':
+      case 'advisor':
+      case 'coordinator':
+      case 'subgroup_head':
         return const ClubDashboard();
       default:
+        print('Unknown role: $role, defaulting to StudentDashboard');
         return const StudentDashboard();
     }
   }

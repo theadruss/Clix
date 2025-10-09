@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-import '../../../core/theme/color_palette.dart';
-import '../../../core/theme/text_styles.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});

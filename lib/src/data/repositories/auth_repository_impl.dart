@@ -1,6 +1,5 @@
 import 'package:campus_connect/src/domain/repositories/auth_repository.dart';
 import 'package:campus_connect/src/data/datasources/remote/auth_api.dart';
-import 'package:campus_connect/src/data/models/user/user_model.dart';
 import 'package:campus_connect/src/domain/entities/user_entity.dart';
 
 class AuthRepositoryImpl implements AuthRepository {

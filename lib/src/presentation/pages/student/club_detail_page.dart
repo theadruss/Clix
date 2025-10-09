@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/utils/mock_data_service.dart';
 import 'club_chat_page.dart';
 import 'propose_event_page.dart';
 import '../volunteer/volunteer_management_page.dart';
@@ -22,41 +23,10 @@ class ClubDetailPage extends StatefulWidget {
 class _ClubDetailPageState extends State<ClubDetailPage> {
   int _selectedTab = 0; // 0: Events, 1: My Proposals
 
-  // Mock events data
-  final List<Map<String, dynamic>> _upcomingEvents = [
-    {
-      'id': '1',
-      'title': 'Tech Workshop: Flutter Basics',
-      'date': 'Oct 20, 2024',
-      'time': '3:00 PM - 5:00 PM',
-      'venue': 'CS Lab 101',
-      'status': 'approved',
-      'registered': true,
-      'needsVolunteers': true,
-      'volunteerRoles': ['Registration', 'Technical Support'],
-    },
-    {
-      'id': '2',
-      'title': 'Hackathon 2024',
-      'date': 'Oct 25, 2024',
-      'time': '9:00 AM - 6:00 PM',
-      'venue': 'Main Auditorium',
-      'status': 'approved',
-      'registered': false,
-      'needsVolunteers': true,
-      'volunteerRoles': ['Judging Assistant', 'Participant Support'],
-    },
-    {
-      'id': '3',
-      'title': 'AI Seminar',
-      'date': 'Nov 2, 2024',
-      'time': '2:00 PM - 4:00 PM',
-      'venue': 'Lecture Hall B',
-      'status': 'pending',
-      'registered': false,
-      'needsVolunteers': false,
-    },
-  ];
+  // Mock events data - filter to show only this club's events
+  List<Map<String, dynamic>> get _upcomingEvents {
+    return MockDataService.getEventsForUser().where((event) => event['club'] == widget.club['name']).toList();
+  }
 
   // Mock proposals data (only visible if user can propose events)
   final List<Map<String, dynamic>> _myProposals = [
@@ -87,18 +57,45 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
     },
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primaryBlack,
-      appBar: AppBar(
-        backgroundColor: AppColors.darkGray,
-        title: Text(
-          widget.club['name'],
-          style: AppTextStyles.headlineSmall,
+  void _toggleClubMembership() {
+    setState(() {
+      if (widget.club['isMember'] == true) {
+        MockDataService.leaveClub(widget.club['id']);
+      } else {
+        MockDataService.joinClub(widget.club['id']);
+      }
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.accentYellow,
+        content: Text(
+          widget.club['isMember'] ? 
+          'Left ${widget.club['name']}' : 
+          'Joined ${widget.club['name']}!',
+          style: TextStyle(color: AppColors.darkGray),
         ),
-        actions: [
-          // Chat Icon
+      ),
+    );
+  }
+
+  @override
+  // In _ClubDetailPageState build method - update the header:
+
+Widget build(BuildContext context) {
+  final userRole = widget.club['userRole'];
+  final roleDisplayName = MockDataService.getUserRoleDisplayName(userRole);
+
+  return Scaffold(
+    backgroundColor: AppColors.primaryBlack,
+    appBar: AppBar(
+      backgroundColor: AppColors.darkGray,
+      title: Text(
+        widget.club['name'],
+        style: AppTextStyles.headlineSmall,
+      ),
+      actions: [
+        if (userRole != null && userRole != 'member') ...[
           IconButton(
             icon: const Icon(Icons.chat_rounded),
             onPressed: () {
@@ -110,17 +107,12 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
               );
             },
           ),
-          // Volunteer Management (only for event proposers)
-          if (widget.canProposeEvents)
+          if (['coordinator', 'advisor'].contains(userRole))
             IconButton(
               icon: const Icon(Icons.volunteer_activism_rounded),
-              onPressed: () {
-                // Show events that need volunteer management
-                _showVolunteerManagementOptions();
-              },
+              onPressed: _showVolunteerManagementOptions,
             ),
-          // Propose Event Button (only if user has permission)
-          if (widget.canProposeEvents)
+          if (['coordinator', 'subgroup_head', 'advisor'].contains(userRole))
             IconButton(
               icon: const Icon(Icons.add_rounded),
               onPressed: () {
@@ -133,54 +125,101 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
               },
             ),
         ],
-      ),
-      body: Column(
-        children: [
-          // Club Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.darkGray,
-            ),
-            child: Row(
-              children: [
-                // Club Image
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: NetworkImage(widget.club['imageUrl']),
-                      fit: BoxFit.cover,
+      ],
+    ),
+    body: Column(
+      children: [
+        // Enhanced Club Header with Role
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: AppColors.darkGray),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: NetworkImage(widget.club['imageUrl']),
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Club Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.club['name'],
-                        style: AppTextStyles.headlineSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.club['description'],
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.mediumGray,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.club['name'],
+                          style: AppTextStyles.headlineSmall,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.club['description'],
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.mediumGray,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (userRole != null) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentYellow.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.accentYellow),
+                            ),
+                            child: Text(
+                              roleDisplayName,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.accentYellow,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _ClubStatItem(count: widget.club['memberCount'].toString(), label: 'Members'),
+                  _ClubStatItem(count: widget.club['upcomingEvents'].toString(), label: 'Events'),
+                  if (widget.club['subgroups'] != null)
+                    _ClubStatItem(count: widget.club['subgroups'].length.toString(), label: 'Subgroups'),
+                  const Spacer(),
+                  if (widget.club['isMember'] != true)
+                    ElevatedButton(
+                      onPressed: _toggleClubMembership,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentYellow,
+                        foregroundColor: AppColors.darkGray,
+                      ),
+                      child: const Text('Join Club'),
+                    )
+                  else
+                    OutlinedButton(
+                      onPressed: _toggleClubMembership,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.mediumGray,
+                        side: BorderSide(color: AppColors.mediumGray),
+                      ),
+                      child: const Text('Leave Club'),
+                    ),
+                ],
+              ),
+            ],
           ),
+        ),
           // Tabs
           Container(
             color: AppColors.darkGray,
@@ -212,6 +251,28 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
   }
 
   Widget _buildEventsList() {
+    if (_upcomingEvents.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.event_busy_rounded,
+              size: 64,
+              color: AppColors.mediumGray,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No upcoming events',
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.mediumGray,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _upcomingEvents.length,
@@ -219,7 +280,7 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
         final event = _upcomingEvents[index];
         return _EventCard(
           event: event,
-          onManageVolunteers: widget.canProposeEvents && event['needsVolunteers']
+          onManageVolunteers: widget.canProposeEvents
               ? () {
                   Navigator.push(
                     context,
@@ -229,6 +290,9 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
                   );
                 }
               : null,
+          onRegisterChanged: () {
+            setState(() {}); // Refresh the UI
+          },
         );
       },
     );
@@ -355,6 +419,41 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
   }
 }
 
+class _ClubStatItem extends StatelessWidget {
+  final String count;
+  final String label;
+
+  const _ClubStatItem({
+    required this.count,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            count,
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: AppColors.accentYellow,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.mediumGray,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DetailTab extends StatelessWidget {
   final String title;
   final bool isActive;
@@ -399,8 +498,36 @@ class _DetailTab extends StatelessWidget {
 class _EventCard extends StatelessWidget {
   final Map<String, dynamic> event;
   final VoidCallback? onManageVolunteers;
+  final VoidCallback? onRegisterChanged;
 
-  const _EventCard({required this.event, this.onManageVolunteers});
+  const _EventCard({
+    required this.event,
+    this.onManageVolunteers,
+    this.onRegisterChanged,
+  });
+
+  void _handleRegistration(BuildContext context) {
+    if (event['isRegistered'] == true) {
+      MockDataService.unregisterFromEvent(event['id']);
+    } else {
+      MockDataService.registerForEvent(event['id']);
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.accentYellow,
+        content: Text(
+          event['isRegistered'] ? 
+          'Unregistered from ${event['title']}' : 
+          'Registered for ${event['title']}!',
+          style: TextStyle(color: AppColors.darkGray),
+        ),
+      ),
+    );
+    
+    // Notify parent to refresh
+    onRegisterChanged?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -469,15 +596,13 @@ class _EventCard extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Register for event
-                  },
+                  onPressed: () => _handleRegistration(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: event['registered'] ? AppColors.mediumGray : AppColors.accentYellow,
-                    foregroundColor: event['registered'] ? AppColors.pureWhite : AppColors.darkGray,
+                    backgroundColor: event['isRegistered'] ? AppColors.mediumGray : AppColors.accentYellow,
+                    foregroundColor: event['isRegistered'] ? AppColors.pureWhite : AppColors.darkGray,
                   ),
                   child: Text(
-                    event['registered'] ? 'Registered' : 'Register Now',
+                    event['isRegistered'] ? 'Registered' : 'Register Now',
                     style: AppTextStyles.buttonMedium,
                   ),
                 ),
