@@ -252,6 +252,9 @@ static List<Map<String, dynamic>> getPendingApprovalsForAdvisor(String clubId) {
   ];
 }
 
+  // Feedback and ratings
+  static final List<Map<String, dynamic>> feedbacks = [];
 
-
+  // Payments
+  static final List<Map<String, dynamic>> payments = [];
 }

@@ -5,6 +5,9 @@ import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/mock_data_service.dart';
 import '../../../data/models/user/user_model.dart';
 import '../../providers/auth_provider.dart';
+import 'event_proposal_page.dart';
+import 'volunteer_management_page.dart';
+import 'member_management_page.dart';
 
 class ClubDashboard extends StatefulWidget {
   const ClubDashboard({super.key});
@@ -363,10 +366,45 @@ class _AdvisorOverviewTab extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             children: [
-              _ActionCard(title: 'Assign Roles', icon: Icons.admin_panel_settings_rounded, onTap: () => _showRoleAssignment(), color: Colors.blue),
-              _ActionCard(title: 'Review Budget', icon: Icons.attach_money_rounded, onTap: () {}, color: Colors.green),
-              _ActionCard(title: 'Generate Report', icon: Icons.assessment_rounded, onTap: () {}, color: Colors.orange),
-              _ActionCard(title: 'Forward to Admin', icon: Icons.forward_to_inbox_rounded, onTap: () => _forwardToAdmin(), color: Colors.purple),
+              _ActionCard(
+                title: 'Assign Roles',
+                icon: Icons.admin_panel_settings_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MemberManagementPage()),
+                  );
+                },
+                color: Colors.blue,
+              ),
+              _ActionCard(
+                title: 'Review Budget',
+                icon: Icons.attach_money_rounded,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Budget review coming soon')),
+                  );
+                },
+                color: Colors.green,
+              ),
+              _ActionCard(
+                title: 'Generate Report',
+                icon: Icons.assessment_rounded,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Report generation coming soon')),
+                  );
+                },
+                color: Colors.orange,
+              ),
+              _ActionCard(
+                title: 'Forward to Admin',
+                icon: Icons.forward_to_inbox_rounded,
+                onTap: () {
+                  _forwardToAdmin(context);
+                },
+                color: Colors.purple,
+              ),
             ],
           ),
         ],
@@ -374,33 +412,105 @@ class _AdvisorOverviewTab extends StatelessWidget {
     );
   }
 
-  void _showRoleAssignment() {
-    // TODO: Implement role assignment dialog
-  }
-
-  void _forwardToAdmin() {
-    // TODO: Implement forward to admin functionality
+  void _forwardToAdmin(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGray,
+        title: Text('Forward to Admin', style: AppTextStyles.headlineSmall),
+        content: Text(
+          'This will forward all approved events to the admin for final approval.',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: AppTextStyles.buttonMedium.copyWith(color: AppColors.mediumGray)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Update pending approvals to forward to admin
+              final pendingApprovals = MockDataService.getPendingApprovalsForAdvisor(club['id']);
+              for (var approval in pendingApprovals) {
+                if (approval['status'] == 'pending_advisor') {
+                  approval['status'] = 'pending_admin';
+                }
+              }
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Events forwarded to admin successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentYellow,
+              foregroundColor: AppColors.darkGray,
+            ),
+            child: const Text('Forward'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _AdvisorApprovalsTab extends StatelessWidget {
+class _AdvisorApprovalsTab extends StatefulWidget {
   final Map<String, dynamic> club;
 
   const _AdvisorApprovalsTab({required this.club});
 
   @override
+  State<_AdvisorApprovalsTab> createState() => _AdvisorApprovalsTabState();
+}
+
+class _AdvisorApprovalsTabState extends State<_AdvisorApprovalsTab> {
+  void _handleApproval(Map<String, dynamic> approval, bool isApproved) {
+    setState(() {
+      approval['status'] = isApproved ? 'pending_admin' : 'rejected';
+      approval['reviewedBy'] = 'Advisor';
+      approval['reviewedDate'] = DateTime.now().toIso8601String();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isApproved ? 'Event approved! Forwarded to admin.' : 'Event rejected'),
+        backgroundColor: isApproved ? Colors.green : Colors.red,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final pendingApprovals = MockDataService.getPendingApprovalsForAdvisor(club['id']);
+    final pendingApprovals = MockDataService.getPendingApprovalsForAdvisor(widget.club['id']);
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: pendingApprovals.length,
       itemBuilder: (context, index) {
         final approval = pendingApprovals[index];
-        return _AdvisorApprovalCard(approval: approval);
+        return _AdvisorApprovalCard(
+          approval: approval,
+          onApprove: () => _handleApproval(approval, true),
+          onReject: () => _handleApproval(approval, false),
+        );
       },
     );
   }
+}
+
+void _handleAdvisorApproval(BuildContext context, Map<String, dynamic> approval, bool isApproved) {
+  approval['status'] = isApproved ? 'pending_admin' : 'rejected';
+  approval['reviewedBy'] = 'Advisor';
+  approval['reviewedDate'] = DateTime.now().toIso8601String();
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(isApproved ? 'Event approved! Forwarded to admin.' : 'Event rejected'),
+      backgroundColor: isApproved ? Colors.green : Colors.red,
+    ),
+  );
 }
 
 class _AdvisorMembersTab extends StatelessWidget {
@@ -567,10 +677,50 @@ class _CoordinatorOverviewTab extends StatelessWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             children: [
-              _ActionCard(title: 'Propose Event', icon: Icons.add_circle_rounded, onTap: () {}, color: Colors.green),
-              _ActionCard(title: 'Manage Volunteers', icon: Icons.volunteer_activism_rounded, onTap: () {}, color: Colors.orange),
-              _ActionCard(title: 'Member Requests', icon: Icons.person_add_rounded, onTap: () {}, color: Colors.blue),
-              _ActionCard(title: 'Club Chat', icon: Icons.chat_rounded, onTap: () {}, color: Colors.purple),
+              _ActionCard(
+                title: 'Propose Event',
+                icon: Icons.add_circle_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EventProposalPage()),
+                  );
+                },
+                color: Colors.green,
+              ),
+              _ActionCard(
+                title: 'Manage Volunteers',
+                icon: Icons.volunteer_activism_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const VolunteerManagementPage()),
+                  );
+                },
+                color: Colors.orange,
+              ),
+              _ActionCard(
+                title: 'Member Requests',
+                icon: Icons.person_add_rounded,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MemberManagementPage()),
+                  );
+                },
+                color: Colors.blue,
+              ),
+              _ActionCard(
+                title: 'Club Chat',
+                icon: Icons.chat_rounded,
+                onTap: () {
+                  // TODO: Navigate to club chat
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Club chat coming soon')),
+                  );
+                },
+                color: Colors.purple,
+              ),
             ],
           ),
         ],
@@ -767,7 +917,7 @@ class _ClubHeader extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.accentYellow.withOpacity(0.2),
+                    color: AppColors.accentYellow.withAlpha((0.2 * 255).toInt()),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -855,7 +1005,7 @@ class _ActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.darkGray,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withAlpha((0.3 * 255).toInt())),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -890,7 +1040,7 @@ class _PendingApprovalItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.darkGray,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: Colors.orange.withAlpha((0.3 * 255).toInt())),
       ),
       child: Row(
         children: [
@@ -898,7 +1048,7 @@ class _PendingApprovalItem extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
+              color: Colors.orange.withAlpha((0.2 * 255).toInt()),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.pending_rounded, color: Colors.orange),
@@ -936,8 +1086,14 @@ class _PendingApprovalItem extends StatelessWidget {
 
 class _AdvisorApprovalCard extends StatelessWidget {
   final Map<String, dynamic> approval;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
 
-  const _AdvisorApprovalCard({required this.approval});
+  const _AdvisorApprovalCard({
+    required this.approval,
+    required this.onApprove,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -963,7 +1119,7 @@ class _AdvisorApprovalCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: Colors.orange.withAlpha((0.2 * 255).toInt()),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -993,27 +1149,31 @@ class _AdvisorApprovalCard extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: BorderSide(color: Colors.red),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _handleAdvisorApproval(context, approval, false);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      child: const Text('Request Changes'),
+                    ),
                   ),
-                  child: const Text('Request Changes'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: AppColors.pureWhite,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _handleAdvisorApproval(context, approval, true);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: AppColors.pureWhite,
+                      ),
+                      child: const Text('Approve'),
+                    ),
                   ),
-                  child: const Text('Approve'),
-                ),
-              ),
             ],
           ),
         ],
@@ -1137,7 +1297,11 @@ class _AdvisorReportCard extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(Icons.download_rounded, color: AppColors.accentYellow),
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Downloading report...')),
+                  );
+                },
               ),
             ],
           ),
@@ -1416,7 +1580,12 @@ class _VolunteerOpportunityCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const VolunteerManagementPage()),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.accentYellow,
                     side: BorderSide(color: AppColors.accentYellow),
@@ -1427,7 +1596,12 @@ class _VolunteerOpportunityCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const VolunteerManagementPage()),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentYellow,
                     foregroundColor: AppColors.darkGray,

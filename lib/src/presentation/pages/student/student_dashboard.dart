@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import 'events_page.dart';
 import 'club_page.dart';
 import 'profile_page.dart';
+import 'event_details_page.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -325,7 +326,9 @@ class _HomeContentState extends State<_HomeContent> {
                       ),
                       TextButton(
                         onPressed: () {
-                          // TODO: Navigate to all volunteer opportunities
+                          ScaffoldMessenger.of(widget.context).showSnackBar(
+                            const SnackBar(content: Text('Volunteer opportunities page coming soon')),
+                          );
                         },
                         child: Text(
                           'See All',

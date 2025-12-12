@@ -58,11 +58,15 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
   ];
 
   void _toggleClubMembership() {
+    final wasMember = widget.club['isMember'] == true;
+    
     setState(() {
-      if (widget.club['isMember'] == true) {
+      if (wasMember) {
         MockDataService.leaveClub(widget.club['id']);
+        widget.club['isMember'] = false;
       } else {
         MockDataService.joinClub(widget.club['id']);
+        widget.club['isMember'] = true;
       }
     });
     
@@ -70,7 +74,7 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
       SnackBar(
         backgroundColor: AppColors.accentYellow,
         content: Text(
-          widget.club['isMember'] ? 
+          wasMember ? 
           'Left ${widget.club['name']}' : 
           'Joined ${widget.club['name']}!',
           style: TextStyle(color: AppColors.darkGray),
@@ -80,19 +84,17 @@ class _ClubDetailPageState extends State<ClubDetailPage> {
   }
 
   @override
-  // In _ClubDetailPageState build method - update the header:
+  Widget build(BuildContext context) {
+    final userRole = widget.club['userRole'] as String?;
+    final roleDisplayName = userRole != null ? MockDataService.getUserRoleDisplayName(userRole) : 'Member';
 
-Widget build(BuildContext context) {
-  final userRole = widget.club['userRole'];
-  final roleDisplayName = MockDataService.getUserRoleDisplayName(userRole);
-
-  return Scaffold(
-    backgroundColor: AppColors.primaryBlack,
-    appBar: AppBar(
-      backgroundColor: AppColors.darkGray,
-      title: Text(
-        widget.club['name'],
-        style: AppTextStyles.headlineSmall,
+    return Scaffold(
+      backgroundColor: AppColors.primaryBlack,
+      appBar: AppBar(
+        backgroundColor: AppColors.darkGray,
+        title: Text(
+          widget.club['name'],
+          style: AppTextStyles.headlineSmall,
       ),
       actions: [
         if (userRole != null && userRole != 'member') ...[
@@ -171,7 +173,7 @@ Widget build(BuildContext context) {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.accentYellow.withOpacity(0.2),
+                              color: AppColors.accentYellow.withAlpha((0.2 * 255).toInt()),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: AppColors.accentYellow),
                             ),

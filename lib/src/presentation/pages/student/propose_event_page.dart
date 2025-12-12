@@ -21,7 +21,7 @@ class _ProposeEventPageState extends State<ProposeEventPage> {
   final TextEditingController _budgetController = TextEditingController();
 
   DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  // Removed unused _selectedTime field
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -45,7 +45,6 @@ class _ProposeEventPageState extends State<ProposeEventPage> {
     );
     if (picked != null) {
       setState(() {
-        _selectedTime = picked;
         _timeController.text = picked.format(context);
       });
     }

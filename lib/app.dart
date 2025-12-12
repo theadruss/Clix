@@ -5,6 +5,7 @@ import 'src/presentation/pages/auth/login_page.dart';
 import 'src/presentation/pages/student/student_dashboard.dart';
 import 'src/presentation/pages/admin/admin_dashboard.dart';
 import 'src/presentation/pages/club/club_dashboard.dart';
+import 'src/presentation/pages/external/external_organizer_dashboard.dart';
 import 'src/config/dependency_injection.dart';
 import 'src/presentation/providers/auth_provider.dart';
 
@@ -53,6 +54,8 @@ class CampusConnectApp extends StatelessWidget {
       case 'coordinator':
       case 'subgroup_head':
         return const ClubDashboard();
+      case 'external':
+        return const ExternalOrganizerDashboard();
       default:
         print('Unknown role: $role, defaulting to StudentDashboard');
         return const StudentDashboard();

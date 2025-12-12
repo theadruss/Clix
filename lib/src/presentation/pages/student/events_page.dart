@@ -3,6 +3,7 @@ import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/mock_data_service.dart';
 import '../../widgets/event/event_card.dart';
+import 'event_details_page.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({super.key});
@@ -39,88 +40,7 @@ class _EventsPageState extends State<EventsPage> {
     });
   }
 
-  void _showEventDetails(Map<String, dynamic> event) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.darkGray,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.mediumGray,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(event['title'], style: AppTextStyles.headlineMedium),
-              const SizedBox(height: 8),
-              Text('by ${event['club']}', 
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.accentYellow)),
-              const SizedBox(height: 16),
-              _EventDetailRow(icon: Icons.calendar_today_rounded, text: event['date']),
-              _EventDetailRow(icon: Icons.access_time_rounded, text: event['time']),
-              _EventDetailRow(icon: Icons.location_on_rounded, text: event['venue']),
-              const SizedBox(height: 16),
-              Text(
-                event['description'],
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          if (event['isRegistered'] == true) {
-                            MockDataService.unregisterFromEvent(event['id']);
-                          } else {
-                            MockDataService.registerForEvent(event['id']);
-                          }
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: AppColors.accentYellow,
-                            content: Text(
-                              event['isRegistered'] ? 
-                              'Unregistered from ${event['title']}' : 
-                              'Registered for ${event['title']}!',
-                              style: TextStyle(color: AppColors.darkGray),
-                            ),
-                          ),
-                        );
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: event['isRegistered'] == true ? 
-                            AppColors.mediumGray : AppColors.accentYellow,
-                        foregroundColor: event['isRegistered'] == true ? 
-                            AppColors.pureWhite : AppColors.darkGray,
-                      ),
-                      child: Text(event['isRegistered'] == true ? 'Registered' : 'Register Now'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  // Removed unused function _showEventDetails
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +150,12 @@ class _EventsPageState extends State<EventsPage> {
                         interestedCount: event['interestedCount'],
                         imageUrl: event['imageUrl'],
                         onTap: () {
-                          _showEventDetails(event);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailsPage(event: event),
+                            ),
+                          );
                         },
                       );
                     },
@@ -281,35 +206,6 @@ class _FilterChip extends StatelessWidget {
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _EventDetailRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _EventDetailRow({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppColors.mediumGray),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.mediumGray,
-            ),
-          ),
-        ],
       ),
     );
   }

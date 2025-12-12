@@ -429,7 +429,7 @@ class _EventTypeIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withAlpha((0.2 * 255).toInt()),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Icon(

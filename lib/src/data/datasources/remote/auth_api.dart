@@ -36,6 +36,26 @@ class AuthApi {
         createdAt: DateTime.now(),
         isEmailVerified: true,
       );
+    } else if (email == 'advisor@campus.edu' && password == 'password') {
+      return UserModel(
+        id: '4',
+        email: email,
+        name: 'Dr. Club Advisor',
+        role: 'advisor',
+        collegeId: 'FACULTY001',
+        createdAt: DateTime.now(),
+        isEmailVerified: true,
+      );
+    } else if (email == 'external@org.com' && password == 'password') {
+      return UserModel(
+        id: '5',
+        email: email,
+        name: 'External Organization',
+        role: 'external',
+        phoneNumber: '+1-800-123-4567',
+        createdAt: DateTime.now(),
+        isEmailVerified: true,
+      );
     } else {
       throw Exception('Invalid credentials');
     }

@@ -227,6 +227,26 @@ class _LoginPageState extends State<LoginPage> {
                               _handleLogin();
                             },
                           ),
+                          _DemoAccountChip(
+                            role: 'Advisor',
+                            email: 'advisor@campus.edu',
+                            password: 'password',
+                            onTap: (email, password) {
+                              _emailController.text = email;
+                              _passwordController.text = password;
+                              _handleLogin();
+                            },
+                          ),
+                          _DemoAccountChip(
+                            role: 'External',
+                            email: 'external@org.com',
+                            password: 'password',
+                            onTap: (email, password) {
+                              _emailController.text = email;
+                              _passwordController.text = password;
+                              _handleLogin();
+                            },
+                          ),
                         ],
                       ),
                     ],

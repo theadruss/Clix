@@ -3,9 +3,7 @@ import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 
 class MemberManagementPage extends StatefulWidget {
-  final Map<String, dynamic> club;
-
-  const MemberManagementPage({super.key, required this.club});
+  const MemberManagementPage({super.key});
 
   @override
   State<MemberManagementPage> createState() => _MemberManagementPageState();
@@ -48,7 +46,7 @@ class _MemberManagementPageState extends State<MemberManagementPage> {
   ];
 
   void _showMemberOptions(Map<String, dynamic> member) {
-    final bool isAdvisor = member['role'] == 'club_advisor';
+    // Removed unused variable isAdvisor
     final bool isCoordinator = member['role'] == 'club_coordinator';
     final bool isStudent = member['role'] == 'student';
 
@@ -149,7 +147,9 @@ class _MemberManagementPageState extends State<MemberManagementPage> {
   }
 
   void _makeCoordinator(Map<String, dynamic> member) {
-    // TODO: Implement make coordinator logic
+    setState(() {
+      member['role'] = 'club_coordinator';
+    });
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -160,7 +160,9 @@ class _MemberManagementPageState extends State<MemberManagementPage> {
   }
 
   void _removeCoordinator(Map<String, dynamic> member) {
-    // TODO: Implement remove coordinator logic
+    setState(() {
+      member['role'] = 'student';
+    });
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -171,28 +173,42 @@ class _MemberManagementPageState extends State<MemberManagementPage> {
   }
 
   void _removeMember(Map<String, dynamic> member) {
-    // TODO: Implement remove member logic
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${member['name']} removed from club'),
-        backgroundColor: Colors.red,
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.darkGray,
+        title: Text('Remove Member', style: AppTextStyles.headlineSmall),
+        content: Text(
+          'Are you sure you want to remove ${member['name']} from the club?',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: AppTextStyles.buttonMedium.copyWith(color: AppColors.mediumGray)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _members.remove(member);
+              });
+              Navigator.pop(context);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${member['name']} removed from club'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            child: Text('Remove', style: AppTextStyles.buttonMedium.copyWith(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
 
-  String _getRoleDisplayName(String role) {
-    switch (role) {
-      case 'student':
-        return 'Student Member';
-      case 'club_coordinator':
-        return 'Club Coordinator';
-      case 'club_advisor':
-        return 'Club Advisor';
-      default:
-        return role;
-    }
-  }
+  // Removed unused function _getRoleDisplayName
 
   @override
   Widget build(BuildContext context) {

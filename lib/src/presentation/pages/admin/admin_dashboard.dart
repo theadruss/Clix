@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/mock_data_service.dart';
-import '../../providers/auth_provider.dart';
+import 'event_approval_page.dart';
+import 'user_management_page.dart';
+import 'analytics_page.dart';
+import 'system_settings_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -17,9 +19,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user!;
-
     return Scaffold(
       backgroundColor: AppColors.primaryBlack,
       appBar: AppBar(
@@ -31,11 +30,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_rounded),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to notifications page (if implemented)
+              Navigator.pushNamed(context, '/notifications');
+            },
           ),
           IconButton(
             icon: const Icon(Icons.account_circle_rounded),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to profile page (if implemented)
+              Navigator.pushNamed(context, '/profile');
+            },
           ),
         ],
       ),
@@ -175,25 +180,45 @@ class _OverviewTab extends StatelessWidget {
               _ActionCard(
                 title: 'Approve Events',
                 icon: Icons.event_available_rounded,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const EventApprovalPage()),
+                  );
+                },
                 color: Colors.green,
               ),
               _ActionCard(
-                title: 'Manage Clubs',
+                title: 'Manage Users',
                 icon: Icons.group_rounded,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UserManagementPage()),
+                  );
+                },
                 color: Colors.blue,
               ),
               _ActionCard(
                 title: 'View Reports',
                 icon: Icons.analytics_rounded,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AnalyticsPage()),
+                  );
+                },
                 color: Colors.purple,
               ),
               _ActionCard(
                 title: 'System Settings',
                 icon: Icons.settings_rounded,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SystemSettingsPage()),
+                  );
+                },
                 color: Colors.orange,
               ),
             ],
@@ -208,7 +233,15 @@ class _OverviewTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ...MockDataService.pendingApprovals.take(3).map((approval) => 
-            _ActivityItem(approval: approval)
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EventApprovalPage()),
+                );
+              },
+              child: _ActivityItem(approval: approval),
+            ),
           ).toList(),
         ],
       ),
@@ -216,8 +249,46 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-class _ApprovalsTab extends StatelessWidget {
+class _ApprovalsTab extends StatefulWidget {
   const _ApprovalsTab();
+
+  @override
+  State<_ApprovalsTab> createState() => _ApprovalsTabState();
+}
+
+class _ApprovalsTabState extends State<_ApprovalsTab> {
+  void _handleApproval(Map<String, dynamic> approval, bool isApproved) {
+    setState(() {
+      approval['status'] = isApproved ? 'approved' : 'rejected';
+      approval['reviewedBy'] = 'Admin';
+      approval['reviewedDate'] = DateTime.now().toIso8601String();
+    });
+
+    if (isApproved) {
+      final event = {
+        'id': approval['id'],
+        'title': approval['title'],
+        'club': approval['club'],
+        'date': approval['date'] ?? 'TBD',
+        'time': '${approval['startTime'] ?? 'TBD'} - ${approval['endTime'] ?? 'TBD'}',
+        'venue': approval['venue'] ?? 'TBD',
+        'description': approval['description'] ?? '',
+        'interestedCount': 0,
+        'imageUrl': 'https://picsum.photos/400/200?random=${approval['id']}',
+        'status': 'approved',
+        'category': approval['category'] ?? 'Other',
+        'isRegistered': false,
+      };
+      MockDataService.events.insert(0, event);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isApproved ? 'Event approved successfully!' : 'Event rejected'),
+        backgroundColor: isApproved ? Colors.green : Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +297,11 @@ class _ApprovalsTab extends StatelessWidget {
       itemCount: MockDataService.pendingApprovals.length,
       itemBuilder: (context, index) {
         final approval = MockDataService.pendingApprovals[index];
-        return _ApprovalCard(approval: approval);
+        return _ApprovalCard(
+          approval: approval,
+          onApprove: () => _handleApproval(approval, true),
+          onReject: () => _handleApproval(approval, false),
+        );
       },
     );
   }
@@ -404,7 +479,7 @@ class _ActionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.darkGray,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withAlpha((0.3 * 255).toInt())),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -446,7 +521,7 @@ class _ActivityItem extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
+              color: Colors.orange.withAlpha((0.2 * 255).toInt()),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.pending_rounded, color: Colors.orange),
@@ -487,8 +562,14 @@ class _ActivityItem extends StatelessWidget {
 
 class _ApprovalCard extends StatelessWidget {
   final Map<String, dynamic> approval;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
 
-  const _ApprovalCard({required this.approval});
+  const _ApprovalCard({
+    required this.approval,
+    required this.onApprove,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -512,7 +593,7 @@ class _ApprovalCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: Colors.orange.withAlpha((0.2 * 255).toInt()),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -543,10 +624,10 @@ class _ApprovalCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onReject,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
-                    side: BorderSide(color: Colors.red),
+                    side: const BorderSide(color: Colors.red),
                   ),
                   child: const Text('Reject'),
                 ),
@@ -554,7 +635,7 @@ class _ApprovalCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: onApprove,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: AppColors.pureWhite,
@@ -596,7 +677,7 @@ class _AnalyticsCard extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: AppColors.accentYellow.withOpacity(0.2),
+              color: AppColors.accentYellow.withAlpha((0.2 * 255).toInt()),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.analytics_rounded, color: AppColors.accentYellow),
