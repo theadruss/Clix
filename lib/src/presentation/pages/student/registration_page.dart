@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../core/utils/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/event_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 
@@ -38,9 +40,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
     // Simulate payment processing
     await Future.delayed(const Duration(seconds: 2));
 
-    // Register for event
+    // Register for event (store in Firestore if available)
     if (widget.event != null) {
-      MockDataService.registerForEvent(widget.event!['id']);
+      final eventProv = Provider.of<EventProvider>(context, listen: false);
+      final authProv = Provider.of<AuthProvider>(context, listen: false);
+      await eventProv.registerForEvent(widget.event!['id'], userId: authProv.user?.id);
     }
 
     setState(() => _isProcessing = false);

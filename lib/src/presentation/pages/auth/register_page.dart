@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
+import '../../providers/auth_provider.dart';
 
 
 class RegisterPage extends StatefulWidget {
@@ -109,25 +111,33 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      // Registration logic
-      final userData = {
-        'name': _nameController.text,
-        'email': _emailController.text,
-        'password': _passwordController.text,
-        'role': _selectedRole,
-        'phoneNumber': _phoneController.text,
-        'collegeId': _collegeIdController.text,
-        'profileImage': _selectedImage?.path,
-      };
-
-      print('Registering user: $userData');
-      
-      await Future.delayed(const Duration(seconds: 2));
+      // Call AuthProvider.register() to save to Firebase
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.register(
+        _emailController.text,
+        _passwordController.text,
+        _nameController.text,
+        _selectedRole,
+      );
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        if (authProvider.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Registration failed: ${authProvider.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        } else {
+          // Registration successful - app will auto-navigate via AuthProvider listener
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

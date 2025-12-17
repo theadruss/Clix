@@ -17,16 +17,81 @@ class EventProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
-    _events = MockDataService.getEventsForUser();
+    // Try to load events from Firestore; fall back to mock data
+    try {
+      final snapshot = await FirebaseClient.firestore.collection('events').get();
+      _events = snapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data() as Map);
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+      print('✅ Loaded ${_events.length} events from Firestore');
+    } catch (e) {
+      print('❌ Error loading events from Firestore: $e');
+      print('📦 Falling back to mock data');
+      await Future.delayed(const Duration(seconds: 1));
+      _events = MockDataService.getEventsForUser();
+    }
 
     _isLoading = false;
     notifyListeners();
   }
 
   void refreshEvents() {
-    _events = MockDataService.getEventsForUser();
+    // lightweight refresh: try to fetch remote events asynchronously
+    loadEvents();
     notifyListeners();
+  }
+
+  Future<void> registerForEvent(String eventId, {String? userId}) async {
+    // Update local state first
+    final idx = _events.indexWhere((e) => e['id'] == eventId);
+    if (idx != -1) {
+      _events[idx]['isRegistered'] = true;
+      _events[idx]['registeredCount'] = (_events[idx]['registeredCount'] ?? 0) + 1;
+      notifyListeners();
+    }
+
+    try {
+      final docRef = FirebaseClient.firestore.collection('events').doc(eventId);
+      await FirebaseClient.firestore.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        if (!snap.exists) return;
+        final current = snap.data() as Map<String, dynamic>;
+        final rc = (current['registeredCount'] ?? 0) as int;
+        tx.update(docRef, {'registeredCount': rc + 1});
+        if (userId != null) {
+          tx.set(docRef.collection('registrations').doc(userId), {
+            'registeredAt': FieldValue.serverTimestamp(),
+          });
+        }
+      });
+    } catch (_) {
+      // ignore - offline or Firestore not configured
+    }
+  }
+
+  Future<void> unregisterFromEvent(String eventId, {String? userId}) async {
+    final idx = _events.indexWhere((e) => e['id'] == eventId);
+    if (idx != -1) {
+      _events[idx]['isRegistered'] = false;
+      _events[idx]['registeredCount'] = (_events[idx]['registeredCount'] ?? 1) - 1;
+      notifyListeners();
+    }
+
+    try {
+      final docRef = FirebaseClient.firestore.collection('events').doc(eventId);
+      await FirebaseClient.firestore.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        if (!snap.exists) return;
+        final current = snap.data() as Map<String, dynamic>;
+        final rc = (current['registeredCount'] ?? 1) as int;
+        tx.update(docRef, {'registeredCount': (rc - 1).clamp(0, rc)});
+        if (userId != null) {
+          tx.delete(docRef.collection('registrations').doc(userId));
+        }
+      });
+    } catch (_) {}
   }
 
   /// Load pending proposals for a given club id (mocked)

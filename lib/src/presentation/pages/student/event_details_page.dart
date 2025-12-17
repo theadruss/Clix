@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../core/utils/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/event_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import 'feedback_page.dart';
 import 'registration_page.dart';
@@ -17,6 +19,22 @@ class EventDetailsPage extends StatefulWidget {
 }
 
 class _EventDetailsPageState extends State<EventDetailsPage> {
+  Future<void> _registerForFreeEvent(Map<String, dynamic> event, BuildContext context) async {
+    final eventProv = Provider.of<EventProvider>(context, listen: false);
+    final authProv = Provider.of<AuthProvider>(context, listen: false);
+    setState(() {
+      event['isRegistered'] = true;
+      event['registeredCount'] = (event['registeredCount'] ?? 0) + 1;
+    });
+    await eventProv.registerForEvent(event['id'], userId: authProv.user?.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Registered successfully!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final event = widget.event;
@@ -111,12 +129,14 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        final eventProv = Provider.of<EventProvider>(context, listen: false);
+                        final authProv = Provider.of<AuthProvider>(context, listen: false);
                         setState(() {
                           event['isRegistered'] = false;
                           event['registeredCount'] = (event['registeredCount'] ?? 1) - 1;
                         });
-                        MockDataService.unregisterFromEvent(event['id']);
+                        await eventProv.unregisterFromEvent(event['id'], userId: authProv.user?.id);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Unregistered from event'),
@@ -147,17 +167,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                           });
                         } else {
                           // Register for free event
-                          setState(() {
-                            event['isRegistered'] = true;
-                            event['registeredCount'] = (event['registeredCount'] ?? 0) + 1;
-                          });
-                          MockDataService.registerForEvent(event['id']);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Registered successfully!'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                          _registerForFreeEvent(event, context);
                         }
                       },
                     ),

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../core/utils/mock_data_service.dart';
 import '../../widgets/event/event_calendar.dart';
 import '../../widgets/event/event_card.dart';
 import '../../widgets/event/volunteer_card.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/event_provider.dart';
 import 'events_page.dart';
 import 'club_page.dart';
 import 'profile_page.dart';
@@ -101,23 +101,19 @@ class _HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<_HomeContent> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _filteredEvents = [];
 
   @override
   void initState() {
     super.initState();
-    _filteredEvents = MockDataService.getEventsForUser().take(3).toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<EventProvider>(context, listen: false).loadEvents();
+    });
     _searchController.addListener(_filterEvents);
   }
 
   void _filterEvents() {
-    final query = _searchController.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        _filteredEvents = MockDataService.getEventsForUser().take(3).toList();
-      } else {
-        _filteredEvents = MockDataService.searchEvents(query).take(3).toList();
-      }
+      // Trigger rebuild to filter events from provider
     });
   }
 
@@ -165,21 +161,23 @@ class _HomeContentState extends State<_HomeContent> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        final eventProv = Provider.of<EventProvider>(context, listen: false);
+                        final authProv = Provider.of<AuthProvider>(context, listen: false);
                         setState(() {
-                          if (event['isRegistered'] == true) {
-                            MockDataService.unregisterFromEvent(event['id']);
-                          } else {
-                            MockDataService.registerForEvent(event['id']);
-                          }
+                          event['isRegistered'] = !(event['isRegistered'] == true);
+                          event['registeredCount'] = (event['registeredCount'] ?? 0) + (event['isRegistered'] == true ? 1 : -1);
                         });
+                        if (event['isRegistered'] == true) {
+                          await eventProv.registerForEvent(event['id'], userId: authProv.user?.id);
+                        } else {
+                          await eventProv.unregisterFromEvent(event['id'], userId: authProv.user?.id);
+                        }
                         ScaffoldMessenger.of(widget.context).showSnackBar(
                           SnackBar(
                             backgroundColor: AppColors.accentYellow,
                             content: Text(
-                              event['isRegistered'] ? 
-                              'Unregistered from ${event['title']}' : 
-                              'Registered for ${event['title']}!',
+                              event['isRegistered'] ? 'Registered for ${event['title']}!' : 'Unregistered from ${event['title']}',
                               style: TextStyle(color: AppColors.darkGray),
                             ),
                           ),
@@ -352,24 +350,43 @@ class _HomeContentState extends State<_HomeContent> {
   // In _HomeContent class - update the _buildRecommendedEvents method:
 
 Widget _buildRecommendedEvents() {
-  return Column(
-    children: _filteredEvents.map((event) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 16), // Added margin to prevent overflow
-        child: EventCard(
-          title: event['title'],
-          club: event['club'],
-          date: event['date'],
-          time: event['time'],
-          venue: event['venue'],
-          interestedCount: event['interestedCount'],
-          imageUrl: event['imageUrl'],
-          onTap: () {
-            _showEventDetails(event);
-          },
-        ),
+  return Consumer<EventProvider>(
+    builder: (context, eventProvider, _) {
+      final events = eventProvider.events.take(3).toList();
+      
+      if (eventProvider.isLoading) {
+        return const Center(child: CircularProgressIndicator(color: Colors.yellow));
+      }
+      
+      if (events.isEmpty) {
+        return Center(
+          child: Text(
+            'No events available',
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
+          ),
+        );
+      }
+      
+      return Column(
+        children: events.map((event) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: EventCard(
+              title: event['title'],
+              club: event['club'],
+              date: event['date'],
+              time: event['time'],
+              venue: event['venue'],
+              interestedCount: event['interestedCount'] ?? 0,
+              imageUrl: event['imageUrl'],
+              onTap: () {
+                _showEventDetails(event);
+              },
+            ),
+          );
+        }).toList(),
       );
-    }).toList(),
+    },
   );
 }
 

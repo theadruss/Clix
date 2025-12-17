@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/event_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../../core/services/firebase_client.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PaymentPage extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -61,15 +66,17 @@ class _PaymentPageState extends State<PaymentPage> {
       await Future.delayed(const Duration(seconds: 3));
 
       // Register user for event after successful payment
-      MockDataService.registerForEvent(widget.event['id']);
+      final eventProv = Provider.of<EventProvider>(context, listen: false);
+      final authProv = Provider.of<AuthProvider>(context, listen: false);
+      await eventProv.registerForEvent(widget.event['id'], userId: authProv.user?.id);
       widget.event['isRegistered'] = true;
       widget.event['registeredCount'] = (widget.event['registeredCount'] ?? 0) + 1;
 
-      // Add to payments record
-      MockDataService.payments.add({
+      // Add to payments record (local + Firestore if available)
+      final paymentRecord = {
         'id': 'PAY-${DateTime.now().millisecondsSinceEpoch}',
         'eventId': widget.event['id'],
-        'userId': 'student_current',
+        'userId': authProv.user?.id ?? 'student_current',
         'eventTitle': widget.event['title'],
         'amount': widget.amount,
         'paymentMethod': _selectedPaymentMethod,
@@ -78,7 +85,15 @@ class _PaymentPageState extends State<PaymentPage> {
         'createdAt': DateTime.now().toIso8601String(),
         'completedAt': DateTime.now().toIso8601String(),
         'receiptUrl': 'https://example.com/receipt/${DateTime.now().millisecondsSinceEpoch}.pdf',
-      });
+      };
+      MockDataService.payments.add(paymentRecord);
+      try {
+        await FirebaseClient.firestore.collection('payments').add({
+          ...paymentRecord,
+          'createdAt': FieldValue.serverTimestamp(),
+          'completedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

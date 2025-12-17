@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/mock_data_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/event_provider.dart';
+import '../../providers/auth_provider.dart';
 import 'club_chat_page.dart';
 import 'propose_event_page.dart';
 import '../volunteer/volunteer_management_page.dart';
@@ -509,24 +512,28 @@ class _EventCard extends StatelessWidget {
   });
 
   void _handleRegistration(BuildContext context) {
+    final eventProv = Provider.of<EventProvider>(context, listen: false);
+    final authProv = Provider.of<AuthProvider>(context, listen: false);
     if (event['isRegistered'] == true) {
-      MockDataService.unregisterFromEvent(event['id']);
+      eventProv.unregisterFromEvent(event['id'], userId: authProv.user?.id);
+      event['isRegistered'] = false;
+      event['registeredCount'] = (event['registeredCount'] ?? 1) - 1;
     } else {
-      MockDataService.registerForEvent(event['id']);
+      eventProv.registerForEvent(event['id'], userId: authProv.user?.id);
+      event['isRegistered'] = true;
+      event['registeredCount'] = (event['registeredCount'] ?? 0) + 1;
     }
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.accentYellow,
         content: Text(
-          event['isRegistered'] ? 
-          'Unregistered from ${event['title']}' : 
-          'Registered for ${event['title']}!',
+          event['isRegistered'] ? 'Registered for ${event['title']}!' : 'Unregistered from ${event['title']}',
           style: TextStyle(color: AppColors.darkGray),
         ),
       ),
     );
-    
+
     // Notify parent to refresh
     onRegisterChanged?.call();
   }

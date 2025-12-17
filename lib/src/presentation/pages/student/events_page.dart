@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../core/utils/mock_data_service.dart';
 import '../../widgets/event/event_card.dart';
+import '../../providers/event_provider.dart';
 import 'event_details_page.dart';
 
 class EventsPage extends StatefulWidget {
@@ -14,33 +15,22 @@ class EventsPage extends StatefulWidget {
 
 class _EventsPageState extends State<EventsPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _filteredEvents = [];
   String _selectedFilter = 'all';
 
   @override
   void initState() {
     super.initState();
-    _filteredEvents = MockDataService.getEventsForUser();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<EventProvider>(context, listen: false).loadEvents();
+    });
     _searchController.addListener(_filterEvents);
   }
 
   void _filterEvents() {
-    final query = _searchController.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        _filteredEvents = MockDataService.getEventsForUser();
-      } else {
-        _filteredEvents = MockDataService.searchEvents(query);
-      }
-      
-      // Apply category filter
-      if (_selectedFilter != 'all') {
-        _filteredEvents = _filteredEvents.where((event) => event['category'] == _selectedFilter).toList();
-      }
+      // Trigger rebuild to filter events from provider
     });
   }
-
-  // Removed unused function _showEventDetails
 
   @override
   Widget build(BuildContext context) {
@@ -53,115 +43,131 @@ class _EventsPageState extends State<EventsPage> {
           style: AppTextStyles.headlineSmall,
         ),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.darkGray,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.pureWhite),
-                decoration: InputDecoration(
-                  hintText: 'Search events...',
-                  hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
-                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.mediumGray),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-              ),
-            ),
-          ),
-          // Filter Chips
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _FilterChip(
-                  label: 'All',
-                  isSelected: _selectedFilter == 'all',
-                  onTap: () => _setFilter('all'),
-                ),
-                _FilterChip(
-                  label: 'Technology',
-                  isSelected: _selectedFilter == 'Technology',
-                  onTap: () => _setFilter('Technology'),
-                ),
-                _FilterChip(
-                  label: 'Cultural',
-                  isSelected: _selectedFilter == 'Cultural',
-                  onTap: () => _setFilter('Cultural'),
-                ),
-                _FilterChip(
-                  label: 'Business',
-                  isSelected: _selectedFilter == 'Business',
-                  onTap: () => _setFilter('Business'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Events List
-          Expanded(
-            child: _filteredEvents.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.event_busy_rounded,
-                          size: 64,
-                          color: AppColors.mediumGray,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No events found',
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Try a different search or filter',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = _filteredEvents[index];
-                      return EventCard(
-                        title: event['title'],
-                        club: event['club'],
-                        date: event['date'],
-                        time: event['time'],
-                        venue: event['venue'],
-                        interestedCount: event['interestedCount'],
-                        imageUrl: event['imageUrl'],
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EventDetailsPage(event: event),
-                            ),
-                          );
-                        },
-                      );
-                    },
+      body: Consumer<EventProvider>(
+        builder: (context, eventProvider, _) {
+          // Filter events based on search and category
+          final filteredEvents = eventProvider.events.where((event) {
+            final query = _searchController.text.toLowerCase();
+            final matchesQuery = event['title'].toString().toLowerCase().contains(query);
+            final matchesFilter = _selectedFilter == 'all' || event['category'] == _selectedFilter;
+            return matchesQuery && matchesFilter;
+          }).toList();
+
+          return Column(
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.darkGray,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-          ),
-        ],
+                  child: TextField(
+                    controller: _searchController,
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.pureWhite),
+                    decoration: InputDecoration(
+                      hintText: 'Search events...',
+                      hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
+                      prefixIcon: Icon(Icons.search_rounded, color: AppColors.mediumGray),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ),
+              ),
+              // Filter Chips
+              SizedBox(
+                height: 50,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _FilterChip(
+                      label: 'All',
+                      isSelected: _selectedFilter == 'all',
+                      onTap: () => _setFilter('all'),
+                    ),
+                    _FilterChip(
+                      label: 'Technology',
+                      isSelected: _selectedFilter == 'Technology',
+                      onTap: () => _setFilter('Technology'),
+                    ),
+                    _FilterChip(
+                      label: 'Cultural',
+                      isSelected: _selectedFilter == 'Cultural',
+                      onTap: () => _setFilter('Cultural'),
+                    ),
+                    _FilterChip(
+                      label: 'Business',
+                      isSelected: _selectedFilter == 'Business',
+                      onTap: () => _setFilter('Business'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Events List
+              Expanded(
+                child: eventProvider.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.yellow),
+                      )
+                    : filteredEvents.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.event_busy_rounded,
+                                  size: 64,
+                                  color: AppColors.mediumGray,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No events found',
+                                  style: AppTextStyles.bodyLarge.copyWith(
+                                    color: AppColors.mediumGray,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Try a different search or filter',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.mediumGray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredEvents.length,
+                            itemBuilder: (context, index) {
+                              final event = filteredEvents[index];
+                              return EventCard(
+                                title: event['title'],
+                                club: event['club'],
+                                date: event['date'],
+                                time: event['time'],
+                                venue: event['venue'],
+                                interestedCount: event['interestedCount'] ?? 0,
+                                imageUrl: event['imageUrl'],
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => EventDetailsPage(event: event),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

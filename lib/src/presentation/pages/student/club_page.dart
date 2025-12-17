@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/color_palette.dart';
 import '../../../core/theme/text_styles.dart';
-import '../../../core/utils/mock_data_service.dart';
+import '../../providers/club_provider.dart';
 import '../student/club_detail_page.dart';
 
 class ClubPage extends StatefulWidget {
@@ -13,23 +14,19 @@ class ClubPage extends StatefulWidget {
 
 class _ClubPageState extends State<ClubPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _filteredClubs = [];
 
   @override
   void initState() {
     super.initState();
-    _filteredClubs = MockDataService.getClubsForUser();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ClubProvider>(context, listen: false).loadClubs();
+    });
     _searchController.addListener(_filterClubs);
   }
 
   void _filterClubs() {
-    final query = _searchController.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        _filteredClubs = MockDataService.getClubsForUser();
-      } else {
-        _filteredClubs = MockDataService.searchClubs(query);
-      }
+      // Trigger rebuild to filter clubs from provider
     });
   }
 
@@ -44,68 +41,79 @@ class _ClubPageState extends State<ClubPage> {
           style: AppTextStyles.headlineSmall,
         ),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.darkGray,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.pureWhite),
-                decoration: InputDecoration(
-                  hintText: 'Search clubs...',
-                  hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
-                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.mediumGray),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      body: Consumer<ClubProvider>(
+        builder: (context, clubProvider, _) {
+          final query = _searchController.text.toLowerCase();
+          final filteredClubs = clubProvider.clubs.where((club) {
+            return club['name'].toString().toLowerCase().contains(query);
+          }).toList();
+
+          return Column(
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.darkGray,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.pureWhite),
+                    decoration: InputDecoration(
+                      hintText: 'Search clubs...',
+                      hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.mediumGray),
+                      prefixIcon: Icon(Icons.search_rounded, color: AppColors.mediumGray),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          // Clubs List
-          Expanded(
-            child: _filteredClubs.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.group_off_rounded,
-                          size: 64,
-                          color: AppColors.mediumGray,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No clubs found',
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.mediumGray,
+              // Clubs List
+              Expanded(
+                child: clubProvider.isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.yellow))
+                    : filteredClubs.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.group_off_rounded,
+                                  size: 64,
+                                  color: AppColors.mediumGray,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No clubs found',
+                                  style: AppTextStyles.bodyLarge.copyWith(
+                                    color: AppColors.mediumGray,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Try a different search',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.mediumGray,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredClubs.length,
+                            itemBuilder: (context, index) {
+                              final club = filteredClubs[index];
+                              return _ClubCard(club: club);
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Try a different search',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.mediumGray,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredClubs.length,
-                    itemBuilder: (context, index) {
-                      final club = _filteredClubs[index];
-                      return _ClubCard(club: club);
-                    },
-                  ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
