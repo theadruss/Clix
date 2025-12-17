@@ -147,3 +147,7 @@ coverage/
 # Node modules (server dependencies)
 server/node_modules/
 node_modules/
+
+server/service-account-key.json
+*.json
+.env
