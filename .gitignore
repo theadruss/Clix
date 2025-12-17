@@ -148,6 +148,16 @@ coverage/
 server/node_modules/
 node_modules/
 
+# CRITICAL: Sensitive credentials and secrets - MUST NOT BE COMMITTED
+server/service-account-key.json
+*.key.json
+*-key.json
+*_secret.json
+.env.local
+.env.production.local
+firebase_key.json
+service_account.json
+
 server/service-account-key.json
 *.json
 .env
