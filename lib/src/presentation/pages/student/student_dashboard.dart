@@ -10,7 +10,6 @@ import '../../providers/auth_provider.dart';
 import 'events_page.dart';
 import 'club_page.dart';
 import 'profile_page.dart';
-import 'event_details_page.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
